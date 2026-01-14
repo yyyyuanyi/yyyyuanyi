@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>生日快乐 🎂</title>
+  <style>
+    :root{--bg:#0b1020;--accent:#ff6b81;--text:#fff}
+    html,body{height:100%;margin:0;font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial}
+    body{background:linear-gradient(180deg,#0b1020 0%, #081326 100%);color:var(--text);overflow:hidden}
+    .stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column}
+
+    /* falling cakes */
+    .cake{position:fixed;font-size:28px;z-index:5;pointer-events:none;opacity:0}
+    @keyframes fall{0%{transform:translateY(-10vh) rotate(0deg);opacity:1}100%{transform:translateY(120vh) rotate(720deg);opacity:0}}
+
+    /* overlay message */
+    .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;backdrop-filter: blur(6px);z-index:10;opacity:0;pointer-events:none;transition:opacity .6s}
+    .overlay.show{opacity:1;pointer-events:auto}
+    .card{background:linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));border:1px solid rgba(255,255,255,0.06);padding:28px;border-radius:18px;text-align:center;max-width:92vw}
+    h1{font-size:36px;margin:0 0 6px;color:var(--accent);text-shadow:0 6px 18px rgba(0,0,0,0.5)}
+    h2{font-size:20px;margin:0 0 18px;color:#ffdfe6}
+
+    /* clover photos */
+    .clover{width:320px;height:320px;position:relative;margin:12px auto}
+    .clover img{position:absolute;width:150px;height:150px;border-radius:50%;object-fit:cover;box-shadow:0 10px 30px rgba(0,0,0,0.6);border:6px solid rgba(255,255,255,0.06)}
+    .c1{left:0;top:0;transform:translate(-10%,-10%)}
+    .c2{right:0;top:0;transform:translate(10%,-10%)}
+    .c3{left:0;bottom:0;transform:translate(-10%,10%)}
+    .c4{right:0;bottom:0;transform:translate(10%,10%)}
+
+    p.wish{margin-top:8px;font-size:18px;color:#fff;line-height:1.4}
+    .controls{display:flex;gap:10px;justify-content:center;margin-top:10px}
+    .btn{background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+    .footer{position:fixed;left:12px;bottom:12px;color:#9aa;z-index:20;font-size:13px}
+    .hint{position:fixed;right:12px;bottom:12px;color:#9aa;z-index:20;font-size:13px;text-align:right}
+
+    @media (max-width:420px){h1{font-size:28px} .clover{width:260px;height:260px} .clover img{width:120px;height:120px}}
+
+  </style>
+</head>
+<body>
+  <div class="stage" id="stage"></div>
+
+  <div class="overlay" id="overlay">
+    <div class="card" id="card">
+      <h1 id="cnMsg">某某某 生日快乐</h1>
+      <h2 id="enMsg">Happy Birthday!</h2>
+
+      <div class="clover" id="clover">
+        <img class="c1" id="p1" src="https://picsum.photos/seed/1/400" alt="photo1">
+        <img class="c2" id="p2" src="https://picsum.photos/seed/2/400" alt="photo2">
+        <img class="c3" id="p3" src="https://picsum.photos/seed/3/400" alt="photo3">
+        <img class="c4" id="p4" src="https://picsum.photos/seed/4/400" alt="photo4">
+      </div>
+
+      <p class="wish" id="wish">愿你笑口常开，心想事成，每一天都光彩夺目！</p>
+      <div class="controls">
+        <button class="btn" id="replay">再放一次 🎉</button>
+        <button class="btn" id="playSong">播放生日歌 🎵</button>
+        <button class="btn" id="download">保存为图片</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">小提示：可通过 URL 参数自定义 -> <code>?name=名字&wish=祝福文字&photos=URL1|URL2|URL3|URL4</code></div>
+  <div class="hint">默认 5 秒后显示祝福；长按图片可保存</div>
+
+  <script>
+    // --------------- 配置（可通过编辑本文件或URL参数修改）
+    const DEFAULT_NAME = '某某某'
+    const DEFAULT_EN = 'Happy Birthday!'
+    const DEFAULT_WISH = '愿你笑口常开，心想事成，每一天都光彩夺目！'
+    const DEFAULT_PHOTOS = [
+      'https://picsum.photos/seed/1/400',
+      'https://picsum.photos/seed/2/400',
+      'https://picsum.photos/seed/3/400',
+      'https://picsum.photos/seed/4/400',
+    ]
+
+    // read query params
+    function qp(key){
+      const u = new URL(window.location.href);
+      return u.searchParams.get(key)
+    }
+    function getPhotos(){
+      const p = qp('photos')
+      if(!p) return DEFAULT_PHOTOS
+      return p.split('|').map(s=>decodeURIComponent(s)).filter(Boolean)
+    }
+
+    const name = decodeURIComponent(qp('name')||DEFAULT_NAME)
+    const en = decodeURIComponent(qp('en')||DEFAULT_EN)
+    const wish = decodeURIComponent(qp('wish')||DEFAULT_WISH)
+    const photos = getPhotos()
+
+    // set text & photos
+    document.getElementById('cnMsg').textContent = name + ' 生日快乐'
+    document.getElementById('enMsg').textContent = en
+    document.getElementById('wish').textContent = wish
+    const ps = ['p1','p2','p3','p4']
+    for (let i=0;i<4;i++){
+      const el = document.getElementById(ps[i])
+      if(photos[i]) el.src = photos[i]
+      else el.src = DEFAULT_PHOTOS[i]
+    }
+
+    // create falling cakes
+    const stage = document.getElementById('stage')
+    let running = false
+    function spawnCake(){
+      const cake = document.createElement('div')
+      cake.className = 'cake'
+      cake.textContent = '🎂'
+      const size = 18 + Math.random()*36
+      cake.style.fontSize = size + 'px'
+      const left = Math.random()*100
+      cake.style.left = left + 'vw'
+      const delay = Math.random()*0.6
+      const dur = 4 + Math.random()*4
+      cake.style.animation = `fall ${dur}s linear ${delay}s forwards`
+      cake.style.opacity = 0
+      stage.appendChild(cake)
+      // trigger opacity
+      requestAnimationFrame(()=> cake.style.opacity = 1)
+      // cleanup
+      setTimeout(()=> cake.remove(), (delay+dur)*1000 + 100)
+    }
+
+    let spawnInterval
+    function startRain(){
+      if(running) return
+      running = true
+      spawnCake()
+      spawnInterval = setInterval(spawnCake, 220)
+      // stop after 5s
+      setTimeout(()=>{
+        stopRain()
+        showOverlay()
+      }, 5000)
+    }
+    function stopRain(){
+      clearInterval(spawnInterval); running=false
+    }
+
+    function showOverlay(){
+      const ol = document.getElementById('overlay')
+      ol.classList.add('show')
+    }
+
+    // replay button
+    document.getElementById('replay').addEventListener('click', ()=>{
+      // hide overlay briefly, clear existing cakes, start again
+      document.getElementById('overlay').classList.remove('show')
+      // remove existing cake nodes
+      document.querySelectorAll('.cake').forEach(c=>c.remove())
+      setTimeout(()=> startRain(), 300)
+    })
+
+    // very simple download (screenshot) using html2canvas if user wants - fallback to alert with instructions
+    document.getElementById('download').addEventListener('click', ()=>{
+      alert('建议在手机上长按图片保存，或打开开发者工具使用截图。\n如果需要，我可以帮你加“保存为图片”功能（将引入小脚本）。')
+    })
+
+    // ---- 生日歌（使用 WebAudio API，无需音频文件） ----
+    let audioCtx = null
+    const noteMap = {
+      G4:392, A4:440, B4:494, C5:523.25, D5:587.33, E5:659.25, F5:698.46, G5:783.99
+    }
+    // melody: [note, beats]
+    const happyMelody = [
+      ['G4',0.5],['G4',0.5],['A4',1],['G4',1],['C5',1],['B4',2],
+      ['G4',0.5],['G4',0.5],['A4',1],['G4',1],['D5',1],['C5',2],
+      ['G4',0.5],['G4',0.5],['G5',1],['E5',1],['C5',1],['B4',1],['A4',2],
+      ['F5',0.5],['F5',0.5],['E5',1],['C5',1],['D5',1],['C5',2]
+    ]
+    function playMelody(){
+      try{
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+        if (audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{})
+        const tempo = 0.45 // seconds per beat
+        let t = audioCtx.currentTime + 0.05
+        happyMelody.forEach(([n, beats])=>{
+          const freq = noteMap[n] || 440
+          const dur = beats * tempo
+          const osc = audioCtx.createOscillator()
+          const gain = audioCtx.createGain()
+          osc.type = 'sine'
+          osc.frequency.value = freq
+          gain.gain.setValueAtTime(0.0001, t)
+          gain.gain.exponentialRampToValueAtTime(0.15, t+0.01)
+          gain.gain.setValueAtTime(0.15, t+dur-0.03)
+          gain.gain.exponentialRampToValueAtTime(0.0001, t+dur)
+          osc.connect(gain); gain.connect(audioCtx.destination)
+          osc.start(t); osc.stop(t+dur+0.02)
+          t += dur
+        })
+      }catch(e){
+        console.warn('播放生日歌失败', e)
+      }
+    }
+
+    // 播放按钮（用户主动触发更可靠）
+    document.getElementById('playSong').addEventListener('click', ()=> playMelody())
+
+    // auto start
+    startRain()
+
+    // when overlay shows, 尝试播放（某些浏览器可能因无用户交互而阻止）
+    const originalShowOverlay = showOverlay
+    function autoShowOverlayAndPlay(){
+      originalShowOverlay()
+      // 尝试播放（若被浏览器阻止，用户可点击播放按钮）
+      playMelody()
+    }
+    // replace calls to showOverlay to call autoShowOverlayAndPlay
+    // find where showOverlay is called from startRain: we can just override it globally
+    showOverlay = autoShowOverlayAndPlay
+
+    // allow tap anywhere to reveal immediately (this is a user gesture; will usually allow audio)
+    window.addEventListener('click', ()=> { showOverlay(); })
+  </script>
+
+  <!--
+    使用说明：
+    - 将此文件上传到 GitHub Pages / Netlify / 任意静态托管后，复制链接发给朋友。
+    - 可通过 URL 参数自定义：
+      ?name=莉莉&en=Happy%20Birthday!&wish=祝福文字&photos=URL1|URL2|URL3|URL4
+    - 示例：
+      https://yourname.github.io/repo/birthday-card.html?name=%E8%8E%89%E8%8E%89&photos=https%3A%2F%2Fpicsum.photos%2Fseed%2Fa%2F400|https%3A%2F%2Fpicsum.photos%2Fseed%2Fb%2F400|https%3A%2F%2Fpicsum.photos%2Fseed%2Fc%2F400|https%3A%2F%2Fpicsum.photos%2Fseed%2Fd%2F400
+    - 如果你想：我可以替你把图片嵌入、替换文字、或把文件部署到 GitHub Pages（需要你授予或提供仓库）。
+  -->
+
+</body>
+</html>
